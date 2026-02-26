@@ -73,6 +73,7 @@ http://localhost:5173
 
 ```bash
 cd frontend
+npm install cypress --save-dev
 npx cypress open
 ```
 
