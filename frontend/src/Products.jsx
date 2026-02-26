@@ -47,9 +47,30 @@ export default function Products({ onSaved }) {
 
 
     const remove = async id => {
-        await axios.delete("http://localhost:3000/products/" + id);
-        load();
-        onSaved?.();
+
+        try {
+
+            await axios.delete("http://localhost:3000/products/" + id);
+
+            await load();
+            onSaved?.();
+
+        } catch (err) {
+
+            if (err.response?.status === 409 && err.response.data.needConfirm) {
+
+                const ok = window.confirm(
+                    "Esse produto possui matérias-primas vinculadas. Deseja excluir e devolver estoque?"
+                );
+
+                if (!ok) return;
+
+                await axios.delete("http://localhost:3000/products/" + id + "?force=true");
+
+                await load();
+                onSaved?.();
+            }
+        }
     };
 
     return (

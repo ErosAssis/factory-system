@@ -1,6 +1,7 @@
 const Product = require("../models/Product");
 const RawMaterial = require("../models/RawMaterial");
 const ProductMaterial = require("../models/ProductMaterial");
+const sequelize = require("../database");
 
 exports.create = async (req, res) => {
   const p = await Product.create(req.body);
@@ -20,8 +21,49 @@ exports.update = async (req, res) => {
 
 exports.remove = async (req, res) => {
   const { id } = req.params;
-  await Product.destroy({ where: { id } });
-  res.status(204).send();
+  const { force } = req.query;
+
+  const transaction = await sequelize.transaction();
+
+  try {
+
+    const links = await ProductMaterial.findAll({
+      where: { ProductId: id },
+      transaction
+    });
+
+    // tem vínculo e não confirmou
+    if (links.length > 0 && force !== "true") {
+      await transaction.rollback();
+
+      return res.status(409).json({
+        error: "Produto possui matérias-primas vinculadas",
+        needConfirm: true
+      });
+    }
+
+    // devolve estoque
+    for (const pm of links) {
+      const material = await RawMaterial.findByPk(pm.RawMaterialId, { transaction });
+
+      if (material) {
+        material.stock += pm.quantity;
+        await material.save({ transaction });
+      }
+    }
+
+    await ProductMaterial.destroy({ where: { ProductId: id }, transaction });
+    await Product.destroy({ where: { id }, transaction });
+
+    await transaction.commit();
+
+    return res.json({ ok: true });
+
+  } catch (e) {
+    await transaction.rollback();
+    console.error(e);
+    return res.status(500).json({ error: "Erro ao remover produto" });
+  }
 };
 
 exports.production = async (req, res) => {

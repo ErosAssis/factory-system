@@ -47,9 +47,30 @@ export default function RawMaterials({ onSaved }) {
 
 
     const remove = async id => {
-        await axios.delete("http://localhost:3000/materials/" + id);
-        load();
-        onSaved?.();
+
+        try {
+
+            await axios.delete("http://localhost:3000/materials/" + id);
+
+            await load();
+            onSaved?.();
+
+        } catch (err) {
+
+            if (err.response?.status === 409 && err.response.data.needConfirm) {
+
+                const ok = window.confirm(
+                    "Essa matéria-prima está vinculada a um produto. Deseja excluir mesmo assim?"
+                );
+
+                if (!ok) return;
+
+                await axios.delete("http://localhost:3000/materials/" + id + "?force=true");
+
+                await load();
+                onSaved?.();
+            }
+        }
     };
 
     return (

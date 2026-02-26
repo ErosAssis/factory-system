@@ -1,5 +1,6 @@
 const ProductMaterial = require("../models/ProductMaterial");
 const RawMaterial = require("../models/RawMaterial");
+const Product = require("../models/Product");
 
 exports.create = async (req, res) => {
     try {
@@ -52,26 +53,25 @@ exports.remove = async (req, res) => {
         const pm = await ProductMaterial.findByPk(req.params.id);
 
         if (!pm) {
-            return res.status(404).json({ error: "Item não encontrado" });
+            return res.status(404).json({ error: "Vínculo não encontrado" });
         }
 
-        // Recupera o material relacionado
         const material = await RawMaterial.findByPk(pm.RawMaterialId);
+
         if (!material) {
             return res.status(404).json({ error: "Matéria-prima não encontrada" });
         }
 
-        // Devolve a quantidade ao estoque
         material.stock += pm.quantity;
         await material.save();
 
-        // Remove o registro
         await pm.destroy();
 
         return res.json({ ok: true });
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: "Erro interno" });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Erro ao remover vínculo" });
     }
 };
 
